@@ -7,16 +7,15 @@ using MLLabelUtils
 using MLDataUtils
 
 include("stepsizes.jl")
-include("optimizer.jl")
+include("optimizers.jl")
 include("onlinelinearmodel.jl")
 include("updaterules.jl")
 include("fit.jl")
-include("predict.jl")
 
+
+export SGDRegressor, AdaGradRegressor
+export SGDClassifier, AdaGradClassifier
 export conststepsize, invstepsize
-export SGDParams
-export OnlineModel
 export fit!
-export decision_function!, decision_function, predict
 
 end # module
