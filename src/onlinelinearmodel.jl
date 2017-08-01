@@ -4,21 +4,27 @@ struct RegularizedLoss{L <: Loss, P <: Penalty}
 end
 
 #Parameters for any linear model implemented here
-struct Model{T <: AbstractFloat}
-    weights::AbstractMatrix{T}
+struct Model{T <: AbstractFloat, N}
+    weights::Array{T, N}
     bias::Vector{T}
 end
 
-function Model{T}(Xsamp::AbstractMatrix{T}, ysamp::RowVector)
-    initweights = randn(T, size(Xsamp, 1))'
+function build_model{T}(Xsamp::AbstractMatrix{T}, ysamp::DenseArray{<:Number, 1})
+    initweights = randn(T, size(Xsamp, 1))
     initbias = zeros(T,1)
-    Model(initweights, initbias)
+    Model{T, 1}(initweights, initbias)
 end
 
-function Model{T}(Xsamp::AbstractMatrix{T}, ysamp::RowVector{<:Unsigned})
+function build_model{T}(Xsamp::AbstractMatrix{T}, ysamp::DenseArray{<:Number, 2})
+    initweights = randn(T, (size(ysamp, 1), size(Xsamp, 1)))
+    initbias = zeros(T,size(ysamp, 1))
+    Model{T, 2}(initweights, initbias)
+end
+
+function build_model{T}(Xsamp::AbstractMatrix{T}, ysamp::DenseVector{<:Unsigned})
     initweights = randn(T, (maximum(ysamp), size(Xsamp, 1)))
     initbias = zeros(T, maximum(ysamp))
-    Model(initweights, initbias)
+    Model{T, 2}(initweights, initbias)
 end
 
 ######################### Label Info ######################################
@@ -26,13 +32,13 @@ abstract type LabelInfo end
 
 struct RealValued{T <: AbstractFloat} <: LabelInfo end
 
-function LabelInfo{T <: AbstractFloat}(ysamp::AbstractMatrix{T})
+function LabelInfo{T <: AbstractFloat}(ysamp::DenseArray{T})
     RealValued{T}()
 end
 
 struct BinaryValued{T <: Bool} <: LabelInfo end
 
-function LabelInfo{T <: Bool}(ysamp::AbstractMatrix{T})
+function LabelInfo{T <: Bool}(ysamp::DenseArray{T})
     BinaryValued{T}()
 end
 
@@ -40,7 +46,7 @@ struct IntValued{T <: Signed} <: LabelInfo
     nlevels::T
 end
 
-function LabelInfo{T <: Signed}(ysamp::AbstractMatrix{T})
+function LabelInfo{T <: Signed}(ysamp::AbstractArray{T})
     IntValued{T}(maximum(ysamp))
 end
 
@@ -54,48 +60,46 @@ end
 ########################## MODEL DEFINITION ###################################
 ################################################################################
 
-struct OnlineModel{D<:AbstractFloat,L<:Number,O<:Optimizer} #Type-parameterized by data-type, label-type, optimizer type
+struct OnlineModel{D<:AbstractFloat,L<:Number,O<:Optimizer,N} #Type-parameterized by data-type, label-type, optimizer type
     obj::RegularizedLoss
-    mod::Model{D}
+    mod::Model{D, N}
     opt::O
     enc::LabelInfo
 end
 
-function OnlineModel(Xsamp::AbstractMatrix, ysamp::AbstractArray,
+function OnlineModel{N}(Xsamp::AbstractMatrix, ysamp::DenseArray{<:Number, N},
                     loss::Loss, penalty::Penalty,
                     optparams::OptParams)
-    ysamp = correctdims(ysamp)
     obj = RegularizedLoss(loss, penalty)
-    mod = Model(Xsamp, ysamp)
+    mod = build_model(Xsamp, ysamp)
     opt = build_optimizer(optparams, mod.weights)
     enc = LabelInfo(ysamp)
     D = eltype(Xsamp)
     L = eltype(ysamp)
     O = typeof(opt)
-    OnlineModel{D, L, O}(obj, mod, opt, enc)
+    OnlineModel{D, L, O, N}(obj, mod, opt, enc)
 end
 
-function OnlineRegressor{L<:AbstractFloat}(Xsamp::AbstractMatrix, ysamp::AbstractArray{L};
+function OnlineRegressor{L<:AbstractFloat}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                         loss::Loss=HuberLoss(),
                                         penalty::Penalty=scaled(L2Penalty(),0.01),
                                         optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
 
-function OnlineClassifier{L<:Bool}(Xsamp::AbstractMatrix, ysamp::AbstractArray{L};
+function OnlineClassifier{L<:Bool}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                 loss::Loss=ModifiedHuberLoss(),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
 
-function OnlineRanker{L<:Signed}(Xsamp::AbstractMatrix, ysamp::AbstractArray{L};
+function OnlineRanker{L<:Signed}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                 loss::Loss=OrdinalMarginLoss(ModifiedHuberLoss(), maximum(ysamp)),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
-
 #=
 TODO:
 Enable multiclass and multilabel models

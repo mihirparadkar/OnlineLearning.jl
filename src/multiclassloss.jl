@@ -48,17 +48,20 @@ end
 softmax!{T<:AbstractFloat}(x::AbstractArray{T}) = softmax!(x, x)
 softmax{T<:Real}(x::AbstractArray{T}) = softmax!(Array{Float64}(size(x)), x)
 
+# Abstract Types ##############################################################
+abstract type CategoricalLoss <: SupervisedLoss end
+
 #multinomiallogit+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-struct MultinomialLogitLoss
+struct MultinomialLogitLoss <: CategoricalLoss
   N::Int
 end
 
-function value(loss::MultinomialLogitLoss, target::Unsigned, output::Vector{O} where O <: Number)
+function LearnBase.value(loss::MultinomialLogitLoss, target::Unsigned, output::Vector{O} where O <: Number)
   probtarg = output[target]
   logsumexp(output) - probtarg
 end
 
-function deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::MultinomialLogitLoss, target::Unsigned, output::AbstractVector{O})
+function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::MultinomialLogitLoss, target::Unsigned, output::AbstractVector{O})
   softmax!(dest, output)
   ret[target] .-= 1
   ret
@@ -66,11 +69,11 @@ end
 
 
 #multiclassl1hinge+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-struct MulticlassL1HingeLoss
+struct MulticlassL1HingeLoss <: CategoricalLoss
   N::Int
 end
 
-function value{O <: AbstractFloat}(loss::MulticlassL1HingeLoss, target::Unsigned, output::AbstractVector{O})
+function LearnBase.value{O <: AbstractFloat}(loss::MulticlassL1HingeLoss, target::Unsigned, output::AbstractVector{O})
   y = target
   maxnoty = O(-Inf)
   @inbounds for i in eachindex(output)
@@ -81,7 +84,7 @@ function value{O <: AbstractFloat}(loss::MulticlassL1HingeLoss, target::Unsigned
   max(0, 1 + maxnoty - output[y])
 end
 
-function deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::MulticlassL1HingeLoss, target::Unsigned, output::AbstractVector{O})
+function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::MulticlassL1HingeLoss, target::Unsigned, output::AbstractVector{O})
   y = target
   maxnoty = O(-Inf)
   indmaxnoty = 0
@@ -101,12 +104,12 @@ end
 
 
 #ovrloss++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-struct OVRLoss{L <: MarginLoss}
+struct OVRLoss{L <: MarginLoss} <: CategoricalLoss
   loss::L
   N::Int
 end
 
-function value{O <: AbstractFloat}(loss::OVRLoss, target::Unsigned, output::AbstractVector{O})
+function LearnBase.value{O <: AbstractFloat}(loss::OVRLoss, target::Unsigned, output::AbstractVector{O})
   ret = zero(O)
   for i in eachindex(output)
     if i != target
@@ -118,7 +121,7 @@ function value{O <: AbstractFloat}(loss::OVRLoss, target::Unsigned, output::Abst
   ret
 end
 
-function deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::OVRLoss, target::Unsigned, output::AbstractVector{O})
+function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::OVRLoss, target::Unsigned, output::AbstractVector{O})
   scale!(dest, 0)
   for i in eachindex(output)
     if i != target

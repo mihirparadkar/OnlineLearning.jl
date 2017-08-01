@@ -3,18 +3,19 @@ function defaultbatchsize(numobs::Int)
     numobs |> sqrt |> log2 |> ceil |> exp2 |> Int
 end
 
-function decodelabels{D<:AbstractFloat,L<:AbstractFloat}(mod::OnlineModel{D,L,<:Optimizer},
-                                                        ysamp::DenseVector{L})
-    convert(Vector{D}, ysamp)
+function decodelabels{D<:AbstractFloat,L<:Number}(mod::OnlineModel{D,L},
+                                                        ysamp::DenseArray{L})
+    convert(Array{D}, ysamp)
 end
 
-function decodelabels{D<:AbstractFloat,L<:Bool}(mod::OnlineModel{D,L,<:Optimizer},
-                                                ysamp::DenseVector{L})
+function decodelabels{D<:AbstractFloat,L<:Bool}(mod::OnlineModel{D,L},
+                                                ysamp::DenseArray{L})
     D[2el - 1 for el in ysamp]
 end
 
+
 function fit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
-                                X::AbstractMatrix{T}, y::DenseVector;
+                                X::AbstractMatrix{T}, y::DenseArray;
                                 shuffle::Bool=true,
                                 batchsize::Int=defaultbatchsize(size(X,2)),
                                 epochs::Int=1,
@@ -36,7 +37,7 @@ function fit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
         end
         mod.opt.t += 1
         if verbose
-            pred = At_mul_B(Xbatch, mod.mod.weights) .+ mod.mod.bias
+            pred = decision_func(mod, Xbatch)
             obj = value(mod.obj.loss, ybatch, pred, AvgMode.Mean()) + value(mod.obj.penalty, mod.mod.weights)
             println("epoch $(mod.opt.t - 1): objective = $obj")
         end

@@ -3,6 +3,7 @@ using Reexport
 # package code goes here
 @reexport using LossFunctions
 @reexport using PenaltyFunctions
+@reexport using LearnBase
 using MLLabelUtils
 using MLDataUtils
 
@@ -20,6 +21,6 @@ export conststepsize, invstepsize
 export SGDParams
 export OnlineModel, OnlineClassifier, OnlineRegressor, OnlineRanker
 export fit!
-export decision_function!, decision_function, predict
+export decision_func!, decision_func, predict
 
 end # module

@@ -19,19 +19,25 @@ function SGDParams()
     SGDParams(conststepsize(0.01))
 end
 
-function build_optimizer(params::SGDParams, weights::Vector)
+function build_optimizer(params::SGDParams, weights::Array)
     SGDOptimizer(1, params.newstepsize)
 end
 
-mutable struct SGDStorage{T <: AbstractFloat}
-    grad::Vector{T}
-    derv::Vector{T}
+mutable struct SGDStorage{T <: AbstractFloat, N}
+    grad::Array{T, N}
+    derv::Array{T, N}
     gradbias::Vector{T}
 end
 
 function allocate_storage{T <: AbstractFloat}(weights::Vector{T}, batchlen::Int, opt::SGDOptimizer)
     nfeats = size(weights)
     SGDStorage(zeros(T, nfeats), zeros(T, batchlen), zeros(T, 1))
+end
+
+function allocate_storage{T <: AbstractFloat}(weights::Matrix{T}, batchlen::Int, opt::SGDOptimizer)
+    nfeats = size(weights, 2)
+    nlabels = size(weights, 1)
+    SGDStorage(zeros(T, (nlabels, nfeats)), zeros(T, (nlabels, batchlen)), zeros(T, nlabels))
 end
 
 ########################  ADAGRAD OPTIMIZER ##########################
