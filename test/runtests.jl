@@ -10,6 +10,8 @@ yord = Int.(round.(clamp.(yreg, 1, 4)))
 
 wmulti = randn(Float32, (4, 10))*10
 ymulti = wmulti * Xsampf .+ 3randn(Float32, (4, 128))
+ymultiord = Int.(round.(clamp.(ymulti, 1, 4)))
+ycat = UInt32[indmax(ymulti[:,i]) for i in 1:size(ymulti, 2)]
 
 @test_nowarn OnlineModel(Xsampf, ytrue, L2HingeLoss(), L2Penalty(), SGDParams())
 @test_nowarn OnlineModel(Xsampf, ymulti, L1DistLoss(), L2Penalty(), SGDParams())
@@ -39,3 +41,21 @@ println(yord[1:16])
 
 omulti = OnlineModel(Xsampf, ymulti, L1DistLoss(), L2Penalty(), SGDParams())
 fit!(omulti, Xsampf, ymulti, epochs=10)
+
+omultiord = OnlineRanker(Xsampf, ymultiord)
+ydec = predict(omultiord, Xsampf[:,1:6])
+println(ydec)
+fit!(omultiord, Xsampf, ymultiord, epochs=100, verbose=false)
+ydec = predict(omultiord, Xsampf[:,1:6])
+println(ydec)
+println(ymultiord[:,1:6])
+
+@test_nowarn OnlineMultiClassifier(Xsampf, ycat)
+dump(OnlineMultiClassifier(Xsampf, ycat))
+ocat = OnlineMultiClassifier(Xsampf, ycat, loss=MultinomialLogitLoss(4))
+ypred = predict(ocat, Xsampf[:,1:6])
+println(ypred)
+fit!(ocat, Xsampf, ycat, epochs=100, verbose=false)
+ypred = predict(ocat, Xsampf[:,1:6])
+println(ypred)
+println(ycat[1:6])

@@ -13,6 +13,10 @@ function decodelabels{D<:AbstractFloat,L<:Bool}(mod::OnlineModel{D,L},
     D[2el - 1 for el in ysamp]
 end
 
+function decodelabels{D<:AbstractFloat,L<:Unsigned}(mod::OnlineModel{D,L},
+                                                    ysamp::DenseArray{L})
+    ysamp
+end
 
 function fit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
                                 X::AbstractMatrix{T}, y::DenseArray;

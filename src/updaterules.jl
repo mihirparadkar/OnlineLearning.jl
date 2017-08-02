@@ -26,7 +26,7 @@ end
                                                 storage::Matrix{T},
                                                 obj::RegularizedLoss,
                                                 Xbatch::AbstractMatrix{T},
-                                                ybatch::AbstractArray{T},
+                                                ybatch::AbstractArray,
                                                 model::Model{T, 2}
                                                 )
     batchsize = size(Xbatch, 2)
@@ -46,7 +46,7 @@ end
 function updateparams!{T <: AbstractFloat}(storage::SGDStorage{T},
                                             mod::OnlineModel{T, <:Number, SGDOptimizer},
                                             Xmini::AbstractMatrix{T},
-                                            ymini::Array{T})
+                                            ymini::Array)
 
     grad, gradbias = updategrad!(storage.grad, storage.gradbias, storage.derv,
                                 mod.obj, Xmini, ymini, mod.mod)

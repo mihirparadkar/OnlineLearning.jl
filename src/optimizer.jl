@@ -20,7 +20,7 @@ function SGDParams()
 end
 
 function build_optimizer(params::SGDParams, weights::Array)
-    SGDOptimizer(1, params.newstepsize)
+    SGDOptimizer(0, params.newstepsize)
 end
 
 mutable struct SGDStorage{T <: AbstractFloat, N}

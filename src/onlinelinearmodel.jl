@@ -22,8 +22,8 @@ function build_model{T}(Xsamp::AbstractMatrix{T}, ysamp::DenseArray{<:Number, 2}
 end
 
 function build_model{T}(Xsamp::AbstractMatrix{T}, ysamp::DenseVector{<:Unsigned})
-    initweights = randn(T, (maximum(ysamp), size(Xsamp, 1)))
-    initbias = zeros(T, maximum(ysamp))
+    initweights = randn(T, (Int(maximum(ysamp)), size(Xsamp, 1)))
+    initbias = zeros(T, Int(maximum(ysamp)))
     Model{T, 2}(initweights, initbias)
 end
 
@@ -54,7 +54,7 @@ struct CategoricalValued{T <: Unsigned} <: LabelInfo
     nlevels::T
 end
 
-function LabelInfo{T <: Unsigned}(ysamp::AbstractMatrix{T})
+function LabelInfo{T <: Unsigned}(ysamp::DenseVector{T})
     CategoricalValued{T}(maximum(ysamp))
 end
 ########################## MODEL DEFINITION ###################################
@@ -80,15 +80,32 @@ function OnlineModel{N}(Xsamp::AbstractMatrix, ysamp::DenseArray{<:Number, N},
     OnlineModel{D, L, O, N}(obj, mod, opt, enc)
 end
 
+"""
+Constructor for online multiclass classifiers, where labels are unsigned ints
+to distinguish them from ordinal labels
+"""
+function OnlineModel(Xsamp::AbstractMatrix, ysamp::DenseVector{<:Unsigned},
+                    loss::Loss, penalty::Penalty,
+                    optparams::OptParams)
+    obj = RegularizedLoss(loss, penalty)
+    mod = build_model(Xsamp, ysamp)
+    opt = build_optimizer(optparams, mod.weights)
+    enc = LabelInfo(ysamp)
+    D = eltype(Xsamp)
+    L = eltype(ysamp)
+    O = typeof(opt)
+    OnlineModel{D, L, O, 2}(obj, mod, opt, enc)
+end
+
 function OnlineRegressor{L<:AbstractFloat}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
-                                        loss::Loss=HuberLoss(),
+                                        loss::DistanceLoss=HuberLoss(),
                                         penalty::Penalty=scaled(L2Penalty(),0.01),
                                         optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
 
 function OnlineClassifier{L<:Bool}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
-                                loss::Loss=ModifiedHuberLoss(),
+                                loss::MarginLoss=ModifiedHuberLoss(),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
@@ -96,6 +113,13 @@ end
 
 function OnlineRanker{L<:Signed}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                 loss::Loss=OrdinalMarginLoss(ModifiedHuberLoss(), maximum(ysamp)),
+                                penalty::Penalty=scaled(L2Penalty(),0.01),
+                                optparams::OptParams=SGDParams())
+    OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
+end
+
+function OnlineMultiClassifier{L<:Unsigned}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
+                                loss::CategoricalLoss=MulticlassL1HingeLoss(maximum(ysamp)),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)

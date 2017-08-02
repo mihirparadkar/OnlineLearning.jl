@@ -56,15 +56,15 @@ struct MultinomialLogitLoss <: CategoricalLoss
   N::Int
 end
 
-function LearnBase.value(loss::MultinomialLogitLoss, target::Unsigned, output::Vector{O} where O <: Number)
+function LearnBase.value{O <: AbstractFloat}(loss::MultinomialLogitLoss, target::Unsigned, output::AbstractVector{O})
   probtarg = output[target]
   logsumexp(output) - probtarg
 end
 
 function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::MultinomialLogitLoss, target::Unsigned, output::AbstractVector{O})
   softmax!(dest, output)
-  ret[target] .-= 1
-  ret
+  dest[target] .-= 1
+  dest
 end
 
 
@@ -96,10 +96,10 @@ function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::Mul
   end
   scale!(dest, 0)
   if output[y] <= maxnoty + 1
-    ret[y] = -1
-    ret[indmaxnoty] = 1
+    dest[y] = -1
+    dest[indmaxnoty] = 1
   end
-  ret
+  dest
 end
 
 
@@ -125,10 +125,34 @@ function LearnBase.deriv!{O <: AbstractFloat}(dest::AbstractVector{O}, loss::OVR
   scale!(dest, 0)
   for i in eachindex(output)
     if i != target
-      @inbounds ret[i] = deriv(loss.loss, -1, output[i])
+      @inbounds dest[i] = deriv(loss.loss, -1, output[i])
     else
-      @inbounds ret[i] = deriv(loss.loss, 1, output[i])
+      @inbounds dest[i] = deriv(loss.loss, 1, output[i])
     end
   end
-  ret
+  dest
+end
+
+############################### BROADCASTING VARIANTS ##########################
+function LearnBase.value(loss::CategoricalLoss, target::Vector{<:Unsigned}, output::Matrix{<:AbstractFloat}, ::AvgMode.Mean)
+    ret = zero(eltype(output))
+    @inbounds for i in eachindex(target)
+        @inbounds ret += value(loss, target[i], view(output, :, i)) / length(target)
+    end
+    ret
+end
+
+function LearnBase.value(loss::CategoricalLoss, target::Vector{<:Unsigned}, output::Matrix{<:AbstractFloat}, ::AvgMode.Sum)
+    ret = zero(eltype(output))
+    @inbounds for i in eachindex(target)
+        @inbounds ret += value(loss, target[i], view(output, :, i))
+    end
+    ret
+end
+
+function LearnBase.deriv!{O <: AbstractFloat}(buffer::Matrix{O}, loss::CategoricalLoss, target::Vector{<:Unsigned}, output::Matrix{O})
+    @inbounds for i in eachindex(target)
+        @inbounds @views deriv!(buffer[:,i], loss, target[i], output[:,i])
+    end
+    buffer
 end
