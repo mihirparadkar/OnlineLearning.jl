@@ -44,13 +44,16 @@ end
 #################### SGD UPDATE ###############################################
 
 function updateparams!{T <: AbstractFloat}(storage::SGDStorage{T},
-                                            mod::OnlineModel{T, <:Number, SGDOptimizer},
+                                            mod::OnlineModel{T, <:Number, <:SGDOptimizer},
                                             Xmini::AbstractMatrix{T},
                                             ymini::Array)
 
     grad, gradbias = updategrad!(storage.grad, storage.gradbias, storage.derv,
                                 mod.obj, Xmini, ymini, mod.mod)
-    η = T(mod.opt.newstepsize(mod.opt.t))
-    mod.mod.weights .-= η .* grad
-    mod.mod.bias .-= η .* gradbias
+    opt = mod.opt
+    η = opt.η0 / (1 + opt.decay * opt.t^opt.power_t)
+    opt.prevgrad .= (1 - opt.momentum) .* grad .+ opt.momentum .* opt.prevgrad
+    opt.prevgradbias .= (1 - opt.momentum) .* gradbias .+ opt.momentum .* opt.prevgradbias
+    mod.mod.weights .-= η .* opt.prevgrad
+    mod.mod.bias .-= η .* opt.prevgradbias
 end

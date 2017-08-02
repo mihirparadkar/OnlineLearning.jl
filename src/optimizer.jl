@@ -6,21 +6,42 @@ abstract type OptParams end #Holds everything except permanent storage
 
 ##########################  SGD OPTIMIZER  #####################################
 
-mutable struct SGDOptimizer <: Optimizer
+mutable struct SGDOptimizer{T<:AbstractFloat, N} <: Optimizer
     t::Int #The current epoch of training
-    newstepsize::Function
+    prevgrad::Array{T, N}
+    prevgradbias::Vector{T}
+    η0::T #Initial stepsize
+    decay::T #Multiplied by t to get new stepsize
+    power_t::T #t is raised to this power in stepsize formula
+    momentum::T #proportion of gradient update from previous updates
 end
 
+"""
+Stochastic Gradient Descent parameters
+The parameter update rule is given by
+η₀ / (1 + decay * t ^ power_t), where t is the current epoch of training
+
+The factor of momentum is given by `momentum`, where 0.0 means standard SGD
+This should be a number between 0.0 and 1.0
+"""
 struct SGDParams <: OptParams
-    newstepsize::Function
+    η0::Float64 #Initial stepsize
+    decay::Float64 #Multiplied by t to get new stepsize (bigger shrinks faster)
+    power_t::Float64 #t is raised to this power in stepsize formula (bigger shrinks faster)
+    momentum::Float64 #proportion of gradient update from previous updates
 end
 
-function SGDParams()
-    SGDParams(conststepsize(0.01))
+function SGDParams(;η0=0.05, decay=0.0, power_t=0.25, momentum=0.0)
+    SGDParams(η0, decay, power_t, momentum)
 end
 
-function build_optimizer(params::SGDParams, weights::Array)
-    SGDOptimizer(0, params.newstepsize)
+function build_optimizer{T <: AbstractFloat}(params::SGDParams, weights::Vector{T})
+    SGDOptimizer{T, 1}(0, zeros(weights), zeros(T, 1), params.η0, params.decay, params.power_t, params.momentum)
+end
+
+function build_optimizer{T <: AbstractFloat}(params::SGDParams, weights::Matrix{T})
+    SGDOptimizer{T, 2}(0, zeros(weights), zeros(T, size(weights, 1)),
+                    params.η0, params.decay, params.power_t, params.momentum)
 end
 
 mutable struct SGDStorage{T <: AbstractFloat, N}
