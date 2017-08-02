@@ -14,8 +14,8 @@ ymultiord = Int.(round.(clamp.(ymulti, 1, 4)))
 ycat = UInt32[indmax(ymulti[:,i]) for i in 1:size(ymulti, 2)]
 
 @test_nowarn OnlineModel(Xsampf, ytrue, L2HingeLoss(), L2Penalty(), SGDParams())
-@test_nowarn OnlineModel(Xsampf, ymulti, L1DistLoss(), L2Penalty(), SGDParams())
-o = OnlineModel(Xsampf, ytrue, L2HingeLoss(), L2Penalty(), SGDParams())
+@test_nowarn OnlineModel(Xsampf, ymulti, L1DistLoss(), L2Penalty(), NesterovParams())
+o = OnlineModel(Xsampf, ytrue, L2HingeLoss(), L2Penalty(), NesterovParams())
 ydec = predict(o, Xsampf[:,1:16])
 println(sum(ytrue[1:16] .!= ydec))
 fit!(o, Xsampf, ytrue, epochs=10)
@@ -51,7 +51,6 @@ println(ydec)
 println(ymultiord[:,1:6])
 
 @test_nowarn OnlineMultiClassifier(Xsampf, ycat)
-dump(OnlineMultiClassifier(Xsampf, ycat))
 ocat = OnlineMultiClassifier(Xsampf, ycat, loss=MultinomialLogitLoss(4))
 ypred = predict(ocat, Xsampf[:,1:6])
 println(ypred)

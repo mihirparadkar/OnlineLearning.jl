@@ -126,9 +126,6 @@ function OnlineMultiClassifier{L<:Unsigned}(Xsamp::AbstractMatrix, ysamp::DenseA
 end
 #=
 TODO:
-Enable multiclass and multilabel models
-switch over weights and 1-dim labels to use RowVectors for consistency?
-Nope, use matrices all the time instead, dispatching on the type
-Weights use a column per feature
-Bias is a column vector
+Make tests cleaner
+Add support for sparse matrices, Adagrad, ADAM, RMSProp
 =#

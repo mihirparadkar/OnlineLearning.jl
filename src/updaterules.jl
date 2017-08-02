@@ -5,17 +5,18 @@
                                                 obj::RegularizedLoss,
                                                 Xbatch::AbstractMatrix{T},
                                                 ybatch::DenseVector{T},
-                                                model::Model{T, 1}
+                                                weights::Vector{T},
+                                                bias::Vector{T}
                                                 )
     batchsize = size(Xbatch, 2)
 
     # ∇{w}(L + P) = X'*((L)'(X'w + b, y))/N + (P)'(w)
-    At_mul_B!(storage, Xbatch, model.weights)
-    storage .+= model.bias
+    At_mul_B!(storage, Xbatch, weights)
+    storage .+= bias
     deriv!(storage, obj.loss, ybatch, storage)
     A_mul_B!(grad, Xbatch, storage)
     grad ./= batchsize
-    addgrad!(grad, obj.penalty, model.weights)
+    addgrad!(grad, obj.penalty, weights)
     gradbias .= mean(storage)
     grad, gradbias
 end
@@ -27,17 +28,18 @@ end
                                                 obj::RegularizedLoss,
                                                 Xbatch::AbstractMatrix{T},
                                                 ybatch::AbstractArray,
-                                                model::Model{T, 2}
+                                                weights::Matrix{T},
+                                                bias::Vector{T}
                                                 )
     batchsize = size(Xbatch, 2)
 
     # ∇{w}(L + P) = X'*((L)'(X'w + b, y))/N + (P)'(w)
-    A_mul_B!(storage, model.weights, Xbatch)
-    storage .+= model.bias
+    A_mul_B!(storage, weights, Xbatch)
+    storage .+= bias
     deriv!(storage, obj.loss, ybatch, storage)
     A_mul_Bt!(grad, storage, Xbatch)
     grad ./= batchsize
-    addgrad!(grad, obj.penalty, model.weights)
+    addgrad!(grad, obj.penalty, weights)
     gradbias .= vec(mean(storage, 2))
     grad, gradbias
 end
@@ -49,11 +51,28 @@ function updateparams!{T <: AbstractFloat}(storage::SGDStorage{T},
                                             ymini::Array)
 
     grad, gradbias = updategrad!(storage.grad, storage.gradbias, storage.derv,
-                                mod.obj, Xmini, ymini, mod.mod)
+                                mod.obj, Xmini, ymini, mod.mod.weights, mod.mod.bias)
     opt = mod.opt
     η = opt.η0 / (1 + opt.decay * opt.t^opt.power_t)
-    opt.prevgrad .= (1 - opt.momentum) .* grad .+ opt.momentum .* opt.prevgrad
-    opt.prevgradbias .= (1 - opt.momentum) .* gradbias .+ opt.momentum .* opt.prevgradbias
-    mod.mod.weights .-= η .* opt.prevgrad
-    mod.mod.bias .-= η .* opt.prevgradbias
+    opt.prevgrad .= η.*grad .+ opt.momentum .* opt.prevgrad
+    opt.prevgradbias .= η.*gradbias .+ opt.momentum .* opt.prevgradbias
+    mod.mod.weights .-= opt.prevgrad
+    mod.mod.bias .-= opt.prevgradbias
+end
+
+function updateparams!{T <: AbstractFloat}(storage::NesterovStorage{T},
+                                            mod::OnlineModel{T, <:Number, <:NesterovOptimizer},
+                                            Xmini::AbstractMatrix{T},
+                                            ymini::Array)
+
+    opt = mod.opt
+    η = opt.η0 / (1 + opt.decay * opt.t^opt.power_t)
+    storage.nextweights .= mod.mod.weights .- opt.momentum .* opt.prevgrad
+    storage.nextbias .= mod.mod.bias .- opt.momentum .* opt.prevgradbias
+    grad, gradbias = updategrad!(storage.grad, storage.gradbias, storage.derv,
+                                mod.obj, Xmini, ymini, storage.nextweights, storage.nextbias)
+    opt.prevgrad .= η .* grad .+ opt.momentum .* opt.prevgrad
+    opt.prevgradbias .= η .* gradbias .+ opt.momentum .* opt.prevgradbias
+    mod.mod.weights .-= opt.prevgrad
+    mod.mod.bias .-= opt.prevgradbias
 end
