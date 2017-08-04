@@ -23,7 +23,7 @@ function fit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
                                 shuffle::Bool=true,
                                 batchsize::Int=defaultbatchsize(size(X,2)),
                                 epochs::Int=1,
-                                verbose::Bool=true)
+                                verbose::Bool=false)
 
     yencoded = decodelabels(mod, y)
     nfeats = size(X, 1)

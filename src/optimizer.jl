@@ -44,7 +44,7 @@ function build_optimizer{T <: AbstractFloat}(params::SGDParams, weights::Matrix{
                     params.η0, params.decay, params.power_t, params.momentum)
 end
 
-mutable struct SGDStorage{T <: AbstractFloat, N}
+struct SGDStorage{T <: AbstractFloat, N}
     grad::Array{T, N}
     derv::Array{T, N}
     gradbias::Vector{T}
@@ -62,7 +62,6 @@ function allocate_storage{T <: AbstractFloat}(weights::Matrix{T}, batchlen::Int,
 end
 
 ########################  NESTEROV OPTIMIZER ##################################
-
 
 mutable struct NesterovOptimizer{T<:AbstractFloat, N} <: Optimizer
     t::Int #The current epoch of training
@@ -102,7 +101,7 @@ function build_optimizer{T <: AbstractFloat}(params::NesterovParams, weights::Ma
                     params.η0, params.decay, params.power_t, params.momentum)
 end
 
-mutable struct NesterovStorage{T <: AbstractFloat, N}
+struct NesterovStorage{T <: AbstractFloat, N}
     grad::Array{T, N}
     derv::Array{T, N}
     gradbias::Vector{T}
@@ -125,28 +124,58 @@ end
 
 
 ########################  ADAGRAD OPTIMIZER ##########################
-#=
-mutable struct AdaGradOptimizer{T <: AbstractFloat} <: Optimizer
+
+mutable struct AdagradOptimizer{T <: AbstractFloat, N} <: Optimizer
     t::Int
-    newstepsize::Function
-    Binvsq::Vector{T} #The sum of squares of each component of the gradient
-    avgsqbias::T #Sum of squared biases
+    sqgrads::Array{T, N}
+    sqbiasgrads::Vector{T}
+    η0::T #Initial stepsize
+    decay::T #Multiplied by t to get new stepsize
+    power_t::T #t is raised to this power in stepsize formula
+    ϵ::T #Amount of noise to avoid division by zero
 end
 
-function AdaGradOptimizer{T <: AbstractFloat}(Xsamp::AbstractMatrix{T}, newstepsize::Function = conststepsize(1.))
-    Binvsq = zeros(T, size(Xsamp, 1))
-    t = 1
-    AdaGradOptimizer(t, newstepsize, Binvsq, one(T))
+"""
+AdagradParams <: OptParams
+
+The parameter update rule is given by function
+η₀ / (1 + decay * t ^ power_t), where t is the current epoch of training
+
+ϵ is an amount of noise, usually around 1e-8, to prevent division by zero
+"""
+struct AdagradParams <: OptParams
+    η0::Float64
+    decay::Float64
+    power_t::Float64
+    ϵ::Float64
 end
 
-mutable struct AdaGradStorage{T <: AbstractFloat}
-    grad::Vector{T}
-    derv::Vector{T}
-    gradbias::T
+function AdagradParams(;η0=0.1, decay=0.0, power_t=0.25, ϵ=1e-8)
+    AdagradParams(η0, decay, power_t, ϵ)
 end
 
-function allocate_storage{T <: AbstractFloat}(Xsamp::AbstractMatrix{T}, batchlen::Int, opt::AdaGradOptimizer{T})
-    nfeats = size(Xsamp, 1)
-    AdaGradStorage(zeros(T, nfeats), zeros(T, batchlen), zero(T))
+function build_optimizer{T <: AbstractFloat}(params::AdagradParams, weights::Vector{T})
+    AdagradOptimizer{T, 1}(0, zeros(weights), zeros(T, 1), params.η0, params.decay, params.power_t, params.ϵ)
 end
-=#
+
+function build_optimizer{T <: AbstractFloat}(params::AdagradParams, weights::Matrix{T})
+    AdagradOptimizer{T, 2}(0, zeros(weights), zeros(T, size(weights, 1)),
+                            params.η0, params.decay, params.power_t, params.ϵ)
+end
+
+struct AdagradStorage{T <: AbstractFloat, N}
+    grad::Array{T, N}
+    derv::Array{T, N}
+    gradbias::Vector{T}
+end
+
+function allocate_storage{T <: AbstractFloat}(weights::Vector{T}, batchlen::Int, opt::AdagradOptimizer)
+    nfeats = size(weights)
+    AdagradStorage(zeros(T, nfeats), zeros(T, batchlen), zeros(T, 1))
+end
+
+function allocate_storage{T <: AbstractFloat}(weights::Matrix{T}, batchlen::Int, opt::AdagradOptimizer)
+    nfeats = size(weights, 2)
+    nlabels = size(weights, 1)
+    AdagradStorage(zeros(T, (nlabels, nfeats)), zeros(T, (nlabels, batchlen)), zeros(T, nlabels))
+end

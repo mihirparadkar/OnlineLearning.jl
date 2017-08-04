@@ -31,7 +31,7 @@ println(zip(yreg[1:16], ydec)...)
 
 oord = OnlineModel(Xsampf, yord, OrdinalMarginLoss(L1HingeLoss(), 5),
                                     scaled(L1Penalty(), 0.1),
-                                    SGDParams())
+                                    AdagradParams())
 ydec = predict(oord, Xsampf[:,1:16])
 println(ydec)
 fit!(oord, Xsampf, yord, epochs=100, verbose=false)
