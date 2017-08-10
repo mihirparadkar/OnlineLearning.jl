@@ -141,3 +141,24 @@ squared gradients.
 
 For SGDParams, NesterovParams, or AdagradParams, more information can be found by typing, for example,
 `?SGDParams`.
+
+## Customizing and Extending OnlineLearning
+
+The modular design of the package makes it possible to add new optimizers
+completely different from the currently-implemented ones. At a minimum, the following items are required:
+
+Parameters that subtype `OptParams`
+The optimizer itself that subtypes `Optimizer`
+A method of `build_optimizer` that maps the parameters and model weights to construct the optimizer
+A method of `allocate_storage` that takes model weights, the minibatch size, and an optimizer to
+return an object with any required storage allocated (which could possibly be the optimizer itself).
+A method of `updateparams!` that takes the allocated storage object, an OnlineModel object, a minibatch
+of training data, and the corresponding labels to update the model parameters
+
+
+To best illustrate how to achieve this, we can use the example of a simple SGD optimizer
+that records a history of its objective over each iteration.
+
+```julia
+TODO: Implementation
+```

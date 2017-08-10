@@ -18,7 +18,8 @@ include("predict.jl")
 
 export MultinomialLogitLoss, MulticlassL1HingeLoss, OVRLoss
 export conststepsize, invstepsize
-export SGDParams, NesterovParams, AdagradParams
+export Optimizer, OptParams, SGDParams, NesterovParams, AdagradParams
+export build_optimizer, allocate_storage, updateparams!
 export OnlineModel, OnlineClassifier, OnlineRegressor, OnlineRanker, OnlineMultiClassifier
 export partialfit!
 export decision_func!, decision_func, predict, loss
