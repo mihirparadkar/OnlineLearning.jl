@@ -23,6 +23,8 @@ default parameters.
 
 Here is a very simple example with artificial data
 ```julia
+using OnlineLearning
+
 X = randn(10, 800) # Training data with 10 features and 800 examples
 Xval = randn(10, 200) # Validation data
 wtrue = 3randn(10) # The true parameters
@@ -52,6 +54,8 @@ both when constructing the model and when fitting it.
 This next example shows how an OnlineModel can be fit continuously over changing
 input data, this time with a multi-class classification problem.
 ```julia
+using OnlineLearning
+
 wtrue = 3randn(5, 10) # Use these parameters to generate fake data
 Xsamp = zeros(10, 1) # The content of the data doesn't matter as long as the number of columns is correct
 ysamp = UInt[5] # Unsigned integers are assumed to be multi-class classification, while signed integers are ordinal
@@ -62,7 +66,7 @@ ch = Float64[] #Record of validation error
 for s in 1:100
     # Fake data generation to simulate a stream or other source of changing data
     X = randn(10, 200)
-    Xw = wtrue*X
+    Xw = wtrue*X + randn(5, 200)
     y = UInt[indmax(Xw[:,i]) for i in 1:size(Xw, 2)]
 
     # Fit the model at 1 epochs per fake data stream, holding off the last 20% for validation
@@ -88,6 +92,15 @@ At the core of an OnlineModel are three main things: an objective to minimize
 (loss + regularizer), a set of parameters (weights and bias), and an optimizer
 with information about stepsize, current epoch, and things like a momentum vector
 or other optimizer parameters that are built up over time.
+
+The full constructor has this signature:
+```julia
+OnlineModel{N}(Xsamp::AbstractMatrix, ysamp::DenseArray{<:Number, N},
+               loss::Loss, penalty::Penalty,
+               optparams::OptParams)
+```
+The loss, penalty, and optimizer parameters are keyword arguments when the label
+type is detected.
 
 ## Supported Label Data-Types
 
@@ -157,8 +170,49 @@ of training data, and the corresponding labels to update the model parameters
 
 
 To best illustrate how to achieve this, we can use the example of a simple SGD optimizer
-that records a history of its objective over each iteration.
+with constant stepsize that records a history of its objective over each iteration.
 
 ```julia
-TODO: Implementation
+using OnlineLearning
+import OnlineLearning: OptParams, Optimizer, build_optimizer, allocate_storage, updateparams!
+
+struct SGDHistParams <: OptParams
+  η::Float64 # Only the stepsize is adjustable in this example
+end
+
+# The optimizer object itself
+mutable struct SGDHistOptimizer <: Optimizer
+  t::Int # The current iteration
+  η::Float64 # The stepsize
+  ch::Vector{Float64} # The convergence history
+end
+
+# This function calls the constructor
+function build_optimizer(params::SGDHistParams, weights::Vector)
+  SGDHistOptimizer(0, params.η, Float64[])
+end
+
+# This toy optimizer doesn't need to allocate additional memory for performance
+function allocate_storage(weights::Vector, batchlen::Int, opt::SGDHistOptimizer)
+  opt
+end
+
+# Takes a stochastic gradient step ignoring the bias term for this example
+function updateparams!(opt::SGDHistOptimizer, om::OnlineModel, Xmini::AbstractMatrix, ymini::Vector)
+  weights = om.mod.weights
+  batchsize = size(Xmini, 2)
+  g = (Xmini * deriv(om.obj.loss, ymini, Xmini'weights) ./ batchsize) .+ grad(om.obj.penalty, weights)
+  weights .-= opt.η .* g
+  curobj = value(om.obj.loss, ymini, Xmini'weights) ./ batchsize .+ value(om.obj.penalty, weights)
+  push!(opt.ch, curobj)
+end
+
+Xsamp = randn(10, 160);
+ysamp = 5Xsamp'randn(10) + randn(160);
+om = OnlineModel(Xsamp, ysamp)
+partialfit!(om, Xsamp, ysamp, epochs=10, verbose=true)
 ```
+
+To include support for multi-class and multi-label problems, additional methods for
+`build_optimizer`, `allocate_storage`, and `updateparams!` may be needed to
+accomodate the column-major order of weight and label matrices.
