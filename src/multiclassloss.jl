@@ -52,6 +52,12 @@ softmax{T<:Real}(x::AbstractArray{T}) = softmax!(Array{Float64}(size(x)), x)
 abstract type CategoricalLoss <: SupervisedLoss end
 
 #multinomiallogit+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+"""
+MultinomialLogitLoss <: CategoricalLoss
+
+Implements the multinomial logistic loss, a generalization of the logistic loss
+to multiclass labels.
+"""
 struct MultinomialLogitLoss <: CategoricalLoss
   N::Int
 end
@@ -69,6 +75,13 @@ end
 
 
 #multiclassl1hinge+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+"""
+MulticlassL1HingeLoss <: CategoricalLoss
+
+Implements multi-class hinge loss as formulated in
+Crammer and Singer 2001
+\ell (y)=\max(0,1+\max _{{t\neq y}}{\mathbf  {w}}_{t}{\mathbf  {x}}-{\mathbf  {w}}_{y}{\mathbf  {x}})
+"""
 struct MulticlassL1HingeLoss <: CategoricalLoss
   N::Int
 end
@@ -104,6 +117,13 @@ end
 
 
 #ovrloss++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+"""
+OVRLoss{L <: MarginLoss} <: CategoricalLoss
+
+Implements an One-Vs-Rest approach to multi-class classification
+This uses the loss parameter for N separate binary classification problems,
+each for a different class of labels
+"""
 struct OVRLoss{L <: MarginLoss} <: CategoricalLoss
   loss::L
   N::Int

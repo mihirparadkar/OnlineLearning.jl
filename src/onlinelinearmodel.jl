@@ -104,11 +104,21 @@ function OnlineRegressor{L<:AbstractFloat}(Xsamp::AbstractMatrix, ysamp::DenseAr
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
 
+function OnlineModel{L <: AbstractFloat}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
+                                        kwargs...)
+    OnlineRegressor(Xsamp, ysamp, kwargs...)
+end
+
 function OnlineClassifier{L<:Bool}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                 loss::MarginLoss=ModifiedHuberLoss(),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
+end
+
+function OnlineModel{L <: Bool}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
+                                        kwargs...)
+    OnlineClassifier(Xsamp, ysamp, kwargs...)
 end
 
 function OnlineRanker{L<:Signed}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
@@ -118,11 +128,21 @@ function OnlineRanker{L<:Signed}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
 end
 
+function OnlineModel{L <: Signed}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
+                                        kwargs...)
+    OnlineRanker(Xsamp, ysamp, kwargs...)
+end
+
 function OnlineMultiClassifier{L<:Unsigned}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
                                 loss::CategoricalLoss=MulticlassL1HingeLoss(maximum(ysamp)),
                                 penalty::Penalty=scaled(L2Penalty(),0.01),
                                 optparams::OptParams=SGDParams())
     OnlineModel(Xsamp, ysamp, loss, penalty, optparams)
+end
+
+function OnlineModel{L <: Unsigned}(Xsamp::AbstractMatrix, ysamp::DenseArray{L};
+                                        kwargs...)
+    OnlineMultiClassifier(Xsamp, ysamp, kwargs...)
 end
 #=
 TODO:

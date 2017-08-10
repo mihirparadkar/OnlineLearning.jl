@@ -18,7 +18,7 @@ function decodelabels{D<:AbstractFloat,L<:Unsigned}(mod::OnlineModel{D,L},
     ysamp
 end
 
-function fit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
+function partialfit!{T <: AbstractFloat}(mod::OnlineModel{T,<:Number,<:Optimizer},
                                 X::AbstractMatrix{T}, y::DenseArray;
                                 shuffle::Bool=true,
                                 batchsize::Int=defaultbatchsize(size(X,2)),
