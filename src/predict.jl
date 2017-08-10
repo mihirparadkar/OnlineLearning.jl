@@ -54,5 +54,5 @@ function predict{T<:Number, L<:Unsigned}(om::OnlineModel{T,L,<:Optimizer}, Xpred
 end
 
 function loss{T<:Number}(om::OnlineModel{T}, target::AbstractArray, output::AbstractArray{T})
-    value(om.opt.loss, target, output, AvgMode.Sum())
+    value(om.obj.loss, target, output, AvgMode.Sum())
 end
